@@ -39,7 +39,7 @@ homicide %>%
   group_by(`Investigation Result`) %>%
   summarize(homicides = n()) %>%
   mutate(Percent = round(homicides/sum(homicides)*100,3)) %>%
-  kable(col.names = c("Investigation Result", "Homicides", "Percent of Total"))
+  kable()
 ```
 
 The data focuses on 50 cities chosen by the *Washington Post* based on the size of the cities. Below is a list of the cities and the number of homicides in each one according to the dataset.
@@ -91,14 +91,25 @@ pal <- colorFactor(palette = c("red", "green", "blue", "purple", "yellow"),
 
 leaflet() %>%
   addProviderTiles("CartoDB") %>%
-  addCircleMarkers(data = black, radius = 2, color = ~pal(victim_race), group = "Black", label = ~disposition) %>%
-  addCircleMarkers(data = white, radius = 2, color = ~pal(victim_race), group = "White", label = ~disposition) %>%
-  addCircleMarkers(data = hispanic, radius = 2, color = ~pal(victim_race), group = "Hispanic", label = ~disposition) %>%
-  addCircleMarkers(data = asian, radius = 2, color = ~pal(victim_race), group = "Asian", label = ~disposition) %>%
-  addCircleMarkers(data = other, radius = 2, color = ~pal(victim_race), group = "Other", label = ~disposition) %>%
-  addLayersControl(overlayGroups = c("Black", "White", "Hispanic", "Asian", "Other")) %>%
+  addCircleMarkers(data = open_n.a, radius = 2, color = ~pal(victim_race), group = "Open/No arrest", label = ~disposition) %>%
+  addCircleMarkers(data = closed_b.a, radius = 2, color = ~pal(victim_race), group = "Closed by arrest", label = ~disposition) %>%
+  addCircleMarkers(data = closed_w.a, radius = 2, color = ~pal(victim_race), group = "Closed without arrest", label = ~disposition) %>%
+  addLayersControl(overlayGroups = c("Open/No arrest", "Closed by arrest", "Closed without arrest")) %>%
   addLegend(position = "bottomright",
             pal = pal,
             values = c("Black", "Hispanic", "White", "Asian", "Other"))
 ```
 <br><br>
+
+```{r, echo=F}
+homicide %>%
+  group_by(city, `Investigation Result`) %>%
+  summarize(homicides = n()) %>%
+  mutate(Percent = round(homicides/sum(homicides)*100,3)) %>%
+  filter(`Investigation Result` == "No Arrest") %>%
+  group_by(city) %>%
+  summarize(Percent_no_arrest = sum(Percent)) %>%
+  arrange(desc(Percent_no_arrest)) %>%
+  head(n = 10) %>%
+  kable(col.names = c("City", "Percent No Arrest"))
+```
