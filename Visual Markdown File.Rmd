@@ -1,0 +1,104 @@
+---
+title: "Washington Post Homicide Data"
+author: "Noah Olsen"
+date: "6/15/2018"
+output:
+  prettydoc::html_pretty:
+    theme: tactile
+    highlight: github
+---
+
+The *Washington Post* recently released an [interactive article](https://www.washingtonpost.com/graphics/2018/investigations/unsolved-homicide-database/?utm_term=.8f89c5357a81) looking at homicide arrest rates in 50 different cities across the country. There main headline for the article was that out of 52,175 homicides over the past decade 51 percent didn't result in an arrest, which is a staggering statistic. Looking at the data we get the table below.
+
+
+```{r, include=F}
+library(readr)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(leaflet)
+library(leaflet.extras)
+
+homicide <- read_csv("homicide-data.csv")
+```
+
+```{r, echo =F}
+homicide %>%
+  group_by(disposition) %>%
+  summarize(homicides = n()) %>%
+  mutate(Percent = round(homicides/sum(homicides)*100,3)) %>%
+  kable(col.names = c("Investigation Result", "Homicides", "Percent of Total"))
+
+```
+
+The results are very close to what the Washington Post got but we need to bin **Closed without arrest** and **Open/No arrest** in order to get the right numbers. This yields the following table.
+```{r, echo = F}
+homicide$`Investigation Result` <- ifelse(homicide$disposition == "Closed by arrest", "Arrest", "No Arrest")
+
+homicide %>%
+  group_by(`Investigation Result`) %>%
+  summarize(homicides = n()) %>%
+  mutate(Percent = round(homicides/sum(homicides)*100,3)) %>%
+  kable(col.names = c("Investigation Result", "Homicides", "Percent of Total"))
+```
+
+The data focuses on 50 cities chosen by the *Washington Post* based on the size of the cities. Below is a list of the cities and the number of homicides in each one according to the dataset.
+
+```{r, echo = F}
+homicide %>%
+  group_by(city) %>%
+  summarize(Homicides = n()) %>%
+  arrange(desc(Homicides)) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("condensed"), position = "center") %>%
+  scroll_box(width = "100%", height = "400px")
+
+```
+<br>
+
+For the purpose of this analysis I will start by looking at Washington because it is my home city. If we look at the same table from above for only the homicides that occurred in Washington DC we get the table below.
+
+```{r, echo = F}
+homicide %>%
+  filter(city == 'Washington') %>%
+  group_by(`Investigation Result`) %>%
+  summarize(homicides = n()) %>%
+  mutate(Percent = round(homicides/sum(homicides)*100,3)) %>%
+  kable(col.names = c("Investigation Result", "Homicides", "Percent of Total")) %>%
+  kable_styling(full_width = F, position = 'left')
+
+```
+<br>
+So we see that Washington does about 7 percentage points than the full dataset, that being said having 44% of homicides go unsolved is nothing to write home about. Looking at the distribution of those crimes across the city by race and the status of the investigation gives us the map below.
+
+```{r, echo = F, message=F}
+homicide_dc <- homicide %>%
+  filter(city == 'Washington')
+
+black <- homicide_dc %>% filter(victim_race == 'Black')
+white <- homicide_dc %>% filter(victim_race == 'White')
+hispanic <- homicide_dc %>% filter(victim_race == 'Hispanic')
+asian <- homicide_dc %>% filter(victim_race == 'Asian')
+other <- homicide_dc %>% filter(victim_race == 'Other')
+
+open_n.a <- homicide_dc %>% filter(disposition == 'Open/No arrest')
+closed_b.a <- homicide_dc %>% filter(disposition == 'Closed by arrest')
+closed_w.a <- homicide_dc %>% filter(disposition == 'Closed without arrest')
+
+pal <- colorFactor(palette = c("red", "green", "blue", "purple", "yellow"),
+                   levels = c("Black", "Hispanic", "White", "Asian", "Other"))
+
+
+leaflet() %>%
+  addProviderTiles("CartoDB") %>%
+  addCircleMarkers(data = black, radius = 2, color = ~pal(victim_race), group = "Black", label = ~disposition) %>%
+  addCircleMarkers(data = white, radius = 2, color = ~pal(victim_race), group = "White", label = ~disposition) %>%
+  addCircleMarkers(data = hispanic, radius = 2, color = ~pal(victim_race), group = "Hispanic", label = ~disposition) %>%
+  addCircleMarkers(data = asian, radius = 2, color = ~pal(victim_race), group = "Asian", label = ~disposition) %>%
+  addCircleMarkers(data = other, radius = 2, color = ~pal(victim_race), group = "Other", label = ~disposition) %>%
+  addLayersControl(overlayGroups = c("Black", "White", "Hispanic", "Asian", "Other")) %>%
+  addLegend(position = "bottomright",
+            pal = pal,
+            values = c("Black", "Hispanic", "White", "Asian", "Other"))
+```
+<br><br>
